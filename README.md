@@ -14,4 +14,4 @@
 
 有多餘時間 : 防呆，歡迎畫面，輸入玩家名，遊戲選擇
 
-[撲克牌遊戲本體](localtest/selftest.sln)
+[撲克牌遊戲本體](localtest/Project1/test.cpp)
