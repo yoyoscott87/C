@@ -1,1 +1,3 @@
-﻿
+﻿  test.cpp
+D:\大學用\C++\poker\localtest\Project1\test.cpp(59,13): warning C4267: '正在初始化': 將 'size_t' 轉換為 'int'，資料可能遺失
+  Project1.vcxproj -> D:\大學用\C++\poker\localtest\x64\Debug\Project1.exe

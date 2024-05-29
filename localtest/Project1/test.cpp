@@ -48,9 +48,8 @@ void display_poker(int* poker, int start, int end)
         // 顯示花色, flower_index = poker[i] % 4
         putchar(flower[poker[i] % 4]);
 
-        // 每13張牌換行
         if ((i - start) % 26 == 25) putchar('\n');
-        else putchar(' '); // 加入空格以分隔每張牌
+        else putchar(' '); 
     }
     putchar('\n'); // 每位玩家的牌顯示後加一個換行符
 }
