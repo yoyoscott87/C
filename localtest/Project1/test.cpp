@@ -3,6 +3,8 @@
 #include <time.h>
 #include <string.h>
 
+#pragma warning(disable : 4996)
+
 #define N 52
 #define SWAP(a, b){int t; t=a; a=b; b=t;}
 
@@ -11,6 +13,8 @@ const char flower[4] = { 'S', 'H', 'D', 'C' }; // 4個花色
 const char number[13][BUF_SIZE] = {
     " A", " 2", " 3", " 4", " 5", " 6",
     " 7", " 8", " 9", "10", " J", " Q", " K" };
+
+
 
 // 洗牌函數
 void shuffle(int* array, int Size)
@@ -22,6 +26,39 @@ void shuffle(int* array, int Size)
         pos = rand() % (i + 1);
         SWAP(array[i], array[pos]);
     }
+}
+
+// 寫牌函數
+void write_poker(int* poker, int start, int end, FILE* fp)
+{
+    for (int i = start; i < end - 1; ++i) 
+    {
+        for (int j = i + 1; j < end; ++j) 
+        {
+            if (poker[j] < poker[i] ||
+                (poker[j] == poker[i] && (poker[j] % 4) < (poker[i] % 4)))
+            {
+                int temp = poker[i];
+                poker[i] = poker[j];
+                poker[j] = temp;
+            }
+        }
+    }
+
+    for (int i = start; i < end; ++i) 
+    {
+        fprintf(fp, "%s%c", number[poker[i] / 4], flower[poker[i] % 4]);
+
+        if ((i - start) % 26 == 25)
+        {
+            fprintf(fp, "\n");
+        }
+        else
+        {
+            fprintf(fp, " ");
+        }
+    }
+    fprintf(fp, "\n");
 }
 
 // 顯示牌組函數
@@ -106,8 +143,17 @@ int check_starting_player(int* poker) {
     return starting_player;
 }
 
-int main() {
+int main() 
+{
+    FILE* fp;
     int i, poker[N];
+    fp = fopen("GameProcess.txt", "at+");
+   if (fp == NULL) 
+    {
+        printf("Cannot open the file.\n");
+        return 1;
+    }
+
     for (i = 0; i != N; ++i) poker[i] = i;
     shuffle(poker, N);
 
@@ -119,25 +165,35 @@ int main() {
 
     printf("Player 1's cards:\n");
     display_poker(poker, 0, N / 2); // 顯示玩家1的牌
+    fprintf(fp, "Player 1's cards:\n");
+    write_poker(poker, 0, N / 2, fp);
 
     printf("Player 2's cards:\n");
     display_poker(poker, N / 2, N); // 顯示玩家2的牌
+    fprintf(fp, "Player 2's cards:\n");
+    write_poker(poker, N / 2, N, fp);
 
     while (played_count < N) {
         printf("Player %d's turn:\n", current_player);
+        fprintf(fp, "Player %d's turn:\n", current_player);
+
         printf("Please enter the cards you want to play (e.g., 'AS 2H 3D'): ");
         char input[100]; 
         fgets(input, sizeof(input), stdin);
         parse_input(input, poker, played, N, &played_count);
+        fprintf(fp, "Player %d shows: %s\n", current_player, input);
 
         // Print remaining cards for player
         printf("Remaining cards for Player %d:\n", current_player);
+        fprintf(fp, "Remaining cards for Player %d:\n", current_player);
         for (int i = 0; i < N; i++) {
             if (!played[i] && ((current_player == 1 && i < N / 2) || (current_player == 2 && i >= N / 2))) {
                 printf("%s%c ", number[poker[i] >> 2], flower[poker[i] % 4]);
+                fprintf(fp, "%s%c ", number[poker[i] >> 2], flower[poker[i] % 4]);
             }
         }
         putchar('\n');
+        fprintf(fp, "\n");
 
         int is_empty = 1;
         for (int i = (current_player - 1) * N / 2; i < current_player * N / 2; i++) {
@@ -148,6 +204,8 @@ int main() {
         }
         if (is_empty) {
             printf("Player %d wins!\n", current_player);
+            fprintf(fp, "Player %d wins!\n", current_player);
+            fclose(fp);
             break; // Exit game loop
         }
 
