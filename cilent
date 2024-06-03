@@ -1,0 +1,99 @@
+/*
+	This brief code for internet connection is obtained and modified from the Microsoft
+	website for the term project of NTUST ME2008303 class, 2019.
+	Author: Yu-Hsuan Su
+			National Taiwan University of Science and Technology
+			Department of Mechanical Engineering
+*/
+
+#include <stdio.h>
+#include "inet.h"
+
+#pragma warning(disable:4996)
+
+#define CLIENT
+//#define SERVER
+#define DEBUG
+int states;
+int __cdecl main(int argc, char** argv)
+{
+#ifdef CLIENT
+	char* ipaddr, str[512] = "Ready to start his game? \n";
+
+	// server's ip address for testing and debugging
+	char ipaddr_test[] = "172.17.19.32";
+
+	// Validate the arguments
+	if (argc != 2) {
+#ifdef DEBUG
+		// using default ip address for testing
+		ipaddr = ipaddr_test;
+#else
+		printf("usage: %s server-name\n", argv[0]);
+		return 1;
+#endif
+	}
+	else
+		ipaddr = argv[1];
+
+	// try to connect to server
+	printf("%s", str); client_connect(ipaddr);
+
+	// interactive process
+	do {
+		printf("起頭  \n");
+		// prompt for input
+		printf(" <Mayer> : "); fgets(str, sizeof(str), stdin);
+
+		// To end connection, put @ as the first character.
+		if (str[0] == '@') return 0;
+
+		// remove the newline character obtained by fgets()
+		int i = 0; while (str[i] != '\n') i++; str[i] = '\0';
+
+		// send message to server
+		send_str(str);
+
+		// receive response from server
+		printf("##~~遊戲開始~~## \n\n 生成你的牌組中 <Mayer>... \n");
+		recv_str();
+		printf("<Mayer> 請按下ENTER 丟棄重複的牌組。  \n");
+		states = 2;
+	} while (states == 1);
+
+	do {
+		//char str[] = "HEllo";
+		printf(" <Mayer> : "); fgets(str, sizeof(str), stdin);
+
+		// To end connection, put @ as the first character.
+		if (str[0] == '@') return 0;
+
+		// remove the newline character obtained by fgets()
+		//int i = 0; while (str[i] != '\n') i++; str[i] = '\0';
+
+		// send message to server
+		send_str(str);
+		recv_str();
+		states = 3;
+		printf("\n\n");
+	} while (states == 2);
+
+	do {
+		recv_str();
+		printf("選擇1張手牌 : "); fgets(str, sizeof(str), stdin);
+
+		// To end connection, put @ as the first character.
+		if (str[0] == '@') return 0;
+
+		// remove the newline character obtained by fgets()
+		int i = 0; while (str[i] != '\n') i++; str[i] = '\0';
+		send_str(str);
+		recv_str();
+		printf("\n\n");
+}	while (states == 3);
+
+	inet_shutdown();
+#endif // CLIENT
+
+
+}
