@@ -1,0 +1,381 @@
+/*
+	This brief code for internet connection is obtained and modified from the Microsoft
+	website for the term project of NTUST ME2008303 class, 2019.
+	Author: Yu-Hsuan Su
+			National Taiwan University of Science and Technology
+			Department of Mechanical Engineering
+*/
+
+#include <stdio.h>
+#include "inet.h"
+#include <time.h>
+#pragma warning(disable:4996)
+#define SERVER
+#define DEBUG
+
+int __cdecl main(int argc, char** argv)
+{
+
+#ifdef SERVER
+
+	int states = 1;
+	char str[512] = "Waiting for an player .~.~.~. \n";
+	printf("%s", str); server_listen();// waiting for client to connect
+
+	srand(time(NULL));
+	int player = 2;
+	int card_num = 54;
+	int round = (card_num / player);
+	int card[2][28];
+	int card_all[54];
+	char color[4][5] = { "黑桃","紅心","方塊","梅花" };
+	char point[13][3] = { "A","2","3","4","5","6","7","8","9","T","J","Q","K" };
+	int play_card;
+
+
+	for (int i = 0; i < card_num; i++) card_all[i] = i;
+	for (int j = 0; j < round; j++) { //發牌 X 回
+		for (int i = 0; i < player; i++) {
+			play_card = rand() % card_num;
+			card[i][j] = card_all[play_card];
+			card_all[play_card] = card_all[card_num - 1];
+			card_num--;
+		}
+	}
+	for (int i = 0; i < player; i++) //從玩家1開始依照大小排手牌。
+	{
+		for (int k = 1; k < round; k++)//總共需要檢查的次數
+		{
+			for (int j = 0; j < round - k; j++)//[玩家I][第J張牌] 第1回向後檢查25次，第2回向後檢查24次....
+			{
+				if (card[i][j] > card[i][j + 1])//如果第X張牌數字>X+1(後方)那麼將兩者互換。
+				{
+					int temp = card[i][j];
+					card[i][j] = card[i][j + 1];
+					card[i][j + 1] = temp;
+				}
+			}
+		}
+	}
+
+	//給玩家2
+	char plar2Card[256] = "";
+	for (int j = 0; j < round; j++)
+	{
+		if (card[1][j] == 52 || card[1][j] == 53)//沒有花色的鬼牌
+		{
+			printf("JOKER  ");
+		}
+		else {
+			strcat(plar2Card, color[card[1][j] % 4]);
+			strcat(plar2Card, "_");
+			strcat(plar2Card, point[card[1][j] / 4]);
+			strcat(plar2Card, " , ");
+		}
+	}
+
+	//Jack遊戲開始的手牌
+	do {
+		recv_str();
+		printf(" ##~~遊戲開始~~## \n\n 以下是你的牌組 <Jack> : \n");
+		//將號碼對應的撲克牌列出
+		for (int j = 0; j < round; j++)
+		{
+			if (card[0][j] == 52 || card[0][j] == 53)//沒有花色的鬼牌
+			{
+				printf("JOKER  ");
+			}
+			else {
+				printf("%s_", color[card[0][j] % 4]);
+				printf("%s", point[card[0][j] / 4]);
+			}
+			if (j != round - 1)printf(" , ");
+			else printf("\n\n");
+		}
+
+		printf("Jack 請按下 ENTER ，丟棄重複的牌。 \n");
+		printf(" <Jack> : "); fgets(str, sizeof(str), stdin);// prompt for input
+
+		// To end connection, put @ as the first character
+		if (str[0] == '@') return 0;
+		// remove the newline character obtained by fgets()
+		int i = 0;  while (str[i] != '\n') i++; str[i] = '\0';
+
+		send_str(plar2Card);
+		states = 2;
+	} while (states == 1);
+
+	int jackCard[100];
+	int jackI = -1;
+	int mayerCard[100];//存放沒有重複---mayer
+	int mayerI = -1;//array 的序號
+
+	//Jack與Mayer丟棄後的手牌
+	do {
+		int throwJ = 0;		
+		//發牌之後，顯示剩餘不重複 [Jack]
+		while (throwJ < round)
+		{
+			if ((throwJ) == round-1)//如果最後一個[25]落單。
+			{
+				jackI++;
+				jackCard[jackI] = card[0][throwJ]; //jackI==> array的序號 | throwJ 該檢查的牌張
+				break;
+			}
+			else if (card[0][throwJ + 1] / 4 == card[0][throwJ] / 4) //兩張相同數字
+			{
+				if (throwJ == (round - 2)) { //如果比較最後一張與倒數第2張
+					if (card[0][throwJ] == 52)  //有2張joker 
+					{
+						jackI++;
+						jackCard[jackI] = card[0][throwJ];
+						jackI++;
+						jackCard[jackI] = card[0][throwJ + 1];
+					} 
+					break; 
+				}
+				throwJ += 2;
+			}
+			else {
+				if (throwJ == (round - 2)) { //如果 第26//27張牌不同，將它們存放
+					jackI++;
+					jackCard[jackI] = card[0][throwJ]; 
+					jackI++;
+					jackCard[jackI] = card[0][throwJ+1];
+					break; }
+				jackI++;
+				jackCard[jackI] = card[0][throwJ];
+				throwJ++;
+			}
+		}
+
+		printf("丟棄重複的牌後，Jack 剩下 : \n");
+		for (int j = 0; j <= jackI; j++)
+		{
+			if (jackCard[j] == 52 || jackCard[j] == 53)//沒有花色的鬼牌
+			{
+				printf("JOKER  ");
+			}else{
+			printf("%s_", color[jackCard[j] % 4]);
+			printf("%s  ", point[jackCard[j] / 4]);
+			}
+		}
+		printf(" \n 以上是Jack的牌組。 \n \n ");
+
+		recv_str();
+
+		////換檢查玩家2
+		throwJ = 0; //也要從第0張牌開始算
+		while (throwJ < round)
+		{
+			if ((throwJ) == (round-1))//
+			{
+				mayerI++;
+				mayerCard[mayerI] = card[1][throwJ]; 
+				break;
+			}
+			else if (card[1][throwJ + 1] / 4 == card[1][throwJ] / 4)
+			{
+				if (throwJ == (round - 2)) {
+					if (card[1][throwJ] == 52)  //有2張joker
+					{
+						mayerI++;
+						mayerCard[mayerI] = card[1][throwJ];
+						mayerI++;
+						mayerCard[mayerI] = card[1][throwJ + 1];
+					}
+					break;
+				}
+				throwJ += 2;
+			}
+			else {
+				if (throwJ ==(round-2)) {
+					mayerI++;
+					mayerCard[mayerI] = card[1][throwJ];
+					mayerI++;
+					mayerCard[mayerI] = card[1][throwJ + 1];
+					break;
+				}
+				mayerI++;
+				mayerCard[mayerI] = card[1][throwJ];
+				throwJ++;
+			}
+		}
+
+		char plar2CardNewSet[256] = "";
+		for (int j = 0; j <= mayerI; j++)
+		{
+			if (mayerCard[j] == 52 || mayerCard[j] == 53)//沒有花色的鬼牌
+			{
+				
+				strcat(plar2CardNewSet, "JOKER  ");
+			}
+			else {
+				strcat(plar2CardNewSet, color[mayerCard[j] % 4]);
+				strcat(plar2CardNewSet, "_");
+				strcat(plar2CardNewSet, point[mayerCard[j] / 4]);
+				strcat(plar2CardNewSet, "  ");
+			}
+		}
+		send_str(plar2CardNewSet);
+		states = 3;
+	} while (states == 2);
+
+
+	//開始抽鬼牌
+	do
+	{
+		char myPickup[10];
+		printf("Mayer 共有 %d 張牌。Jack 選擇: \n", mayerI + 1);//0~mayerI ==> +1
+		printf(" <Jack> : "); fgets(myPickup, sizeof(myPickup), stdin);// prompt for input
+
+		if (myPickup[0] == '@') return 0;// To end connection, put @ as the first character
+		// remove the newline character obtained by fgets()
+		int i = 0;  while (myPickup[i] != '\n') i++; myPickup[i] = '\0';
+
+		int nPickup = atoi(myPickup) - 1;//實際上對應到牌組(0開始計)
+		//抽到mayer的??牌
+		if (mayerCard[nPickup] == 52 || mayerCard[nPickup] == 53)// 鬼牌直接加入手牌
+		{
+			jackI++;
+			jackCard[jackI] = mayerCard[nPickup];
+		}
+		else { //檢查與jack牌組中何者同數字 ?
+			for (int i = 0; i <= jackI; i++)
+			{
+				if ((jackCard[i] / 4) == (mayerCard[nPickup] / 4))
+				{
+					if (i != jackI) { //最後一張匹配
+						jackCard[i] = jackCard[jackI];
+					}
+					jackI--; // 非鬼牌，找到相同的。所以jack手牌少了一張
+				}
+			}
+		}
+
+		if (jackI == -1) {
+			printf("Jack wins !\n\n");
+			break;
+		}
+
+		printf("抽牌開始後，Jack 剩下 :\n");
+		for (int j = 0; j <= jackI; j++)
+		{
+			if (jackCard[j] == 52 || jackCard[j] == 53)//沒有花色的鬼牌
+			{
+				printf("JOKER ");
+			}
+			else {
+				printf("%s_", color[jackCard[j] % 4]);
+				printf("%s  ", point[jackCard[j] / 4]);
+			}
+		}
+		printf("\n\n");
+
+
+
+		//檢查Mayer [myPickup]對應的牌然後找到相應的，從mayer的手牌剔除
+		if (nPickup != mayerI )
+		{
+			mayerCard[nPickup] = mayerCard[mayerI];//將 [myPickup] 從 mayer 手中刪除，以最後一張遞補。選到最後一張，不用遞補
+		}
+		mayerI--;
+
+
+		//要傳回給mayer告訴他剩餘的牌組
+		char plar2CardNewSet[512] = "";
+		sprintf(plar2CardNewSet, "\nJack 選擇了你的第%s張手牌。Jack剩下%d張牌。請問你要抽Jack第幾張牌?:\n Mayer手上剩下:\n", myPickup,jackI+1);//傳給mayer告知jack選擇第幾張。
+		for (int j = 0; j <= mayerI; j++)//此時mayer已經少了一張牌。
+		{
+			if (mayerCard[j] == 52 || mayerCard[j] == 53)//沒有花色的鬼牌
+			{
+				strcat(plar2CardNewSet, "JOKER  ");
+			}
+			else {
+				strcat(plar2CardNewSet, color[mayerCard[j] % 4]);
+				strcat(plar2CardNewSet, "_");
+				strcat(plar2CardNewSet, point[mayerCard[j] / 4]);
+				strcat(plar2CardNewSet, "  ");
+			}
+		}
+
+
+		//傳回去給mayer
+		send_str(plar2CardNewSet);
+
+		//mayer傳來，準備抽jack??牌
+		char* youPickup=recv_str();
+		int nMPickup = atoi(youPickup) - 1;//實際上對應到牌組(0開始計)
+		
+		//要傳回給mayer告訴他剩餘的牌組
+		char plar2CardNewSet2[512] = "";
+		sprintf(plar2CardNewSet2, "你選擇了Jack的第%d張手牌。按下Enter:\n Mayer手上剩下:\n", nMPickup+1);//傳給mayer告知jack選擇第幾張。
+
+		////處理mayer手牌------顯示mayer的牌組
+		if (jackCard[nMPickup] == 52 || jackCard[nMPickup] == 53) //鬼牌直接加入手牌
+		{
+			mayerI++;
+			mayerCard[mayerI] = jackCard[nMPickup];
+		}
+		else {
+			for (int i = 0; i <= mayerI; i++)
+			{
+				if ((mayerCard[i] / 4) == (jackCard[nMPickup] / 4))
+				{
+					if (i != mayerI) {
+						mayerCard[i] = mayerCard[mayerI];
+					}
+					mayerI--;//最後一張匹配就不用管。
+				}
+			}
+		}
+
+		if (mayerI == 0)
+		{
+			printf("Mayer left only 1 card and it's not Joker.\n Mayer wins !\n\n");
+			break;
+		}
+
+		for (int j = 0; j <= mayerI; j++)//此時mayer已經少了一張牌。
+		{
+			if (mayerCard[j] == 52 || mayerCard[j] == 53)//沒有花色的鬼牌
+			{
+				strcat(plar2CardNewSet2, "JOKER  ");
+			}
+			else {
+				strcat(plar2CardNewSet2, color[mayerCard[j] % 4]);
+				strcat(plar2CardNewSet2, "_");
+				strcat(plar2CardNewSet2, point[mayerCard[j] / 4]);
+				strcat(plar2CardNewSet2, "  ");
+			}
+		}
+		send_str(plar2CardNewSet2);
+
+
+		//////檢查 [myPickup]對應的牌然後找到相應的，從jack的手牌剔除
+		if (nMPickup != jackI )
+		{
+			jackCard[nMPickup] = jackCard[jackI];//將 [myPickup] 從 mayer 手中刪除，以最後一張遞補。選到最後一張，不用遞補
+		}
+		jackI--;
+
+		printf("Mayer抽牌後，Jack 剩下 : \n");
+		for (int j = 0; j <= jackI; j++)
+		{
+			if (jackCard[j] == 52 || jackCard[j] == 53)//沒有花色的鬼牌
+			{
+				printf("JOKER  ");
+			}
+			else {
+				printf("%s_", color[jackCard[j] % 4]);
+				printf("%s  ", point[jackCard[j] / 4]);
+			}
+		}
+		printf("\n\n\n");
+
+	} while (states == 3);
+
+
+	inet_shutdown();// end connection
+#endif // SERVER
+}
