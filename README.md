@@ -23,4 +23,38 @@
 
 IP:172.1842.175
 
-遊戲名稱:抽鬼牌(2人)\n遊戲方式:拿到牌後，電腦會將數字重複的卡牌兩兩丟棄，接著輪到玩家抽牌時，玩家任意輸入一個數字，電腦將會判斷抽取到對方的第幾張手牌，並找到玩家手上成對且非鬼牌的卡牌後丟棄。只要一方手牌為0，贏家誕生。
+char* recv_str() {
+	int iResult;
+	int iSendResult;
+	char recvbuf[DEFAULT_BUFLEN];
+	int recvbuflen = DEFAULT_BUFLEN;
+	char replied[] = "Received!";
+	char mayerAnswer[DEFAULT_BUFLEN];
+	iResult = recv(theSocket, recvbuf, recvbuflen, 0);
+	if (iResult > 0) {
+		// received
+		recvbuf[iResult] = 0;
+
+		// display incoming message received
+		printf(" <Mayer> : %s\n", recvbuf);
+
+		// Echo back to the sender
+		iSendResult = send(theSocket, replied, 11, 0);
+		if (iSendResult == SOCKET_ERROR) {
+			printf("send failed with error: %d\n", WSAGetLastError());
+			closesocket(theSocket);
+			WSACleanup();
+			return NULL;
+		}
+
+	}
+	else if (iResult == 0)
+		printf("Connection closing...\n");
+	else {
+		printf("recv failed with error: %d\n", WSAGetLastError());
+		closesocket(theSocket);
+		WSACleanup();
+		return NULL;
+	}
+	return recvbuf;
+}
