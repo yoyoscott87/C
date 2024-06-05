@@ -19,7 +19,7 @@ int __cdecl main(int argc, char** argv)
 #ifdef SERVER
 
 	int states = 1;
-	char str[512] = "Waiting for an player .~.~.~. \n";
+	char str[512] = "遊戲名稱:抽鬼牌(2人)\n遊戲方式:拿到牌後，電腦會將數字重複的卡牌兩兩丟棄，接著輪到玩家抽牌時，玩家任意輸入一個數字，電腦將會判斷抽取到對方的第幾張手牌，並找到玩家手上成對且非鬼牌的卡牌後丟棄。只要一方手牌為0，贏家誕生。\n\nWaiting for an player .~.~.~. \n";
 	printf("%s", str); server_listen();// waiting for client to connect
 
 	srand(time(NULL));
@@ -226,14 +226,22 @@ int __cdecl main(int argc, char** argv)
 	do
 	{
 		char myPickup[10];
-		printf("Mayer 共有 %d 張牌。Jack 選擇: \n", mayerI + 1);//0~mayerI ==> +1
+		printf("Mayer 共有 %d 張牌。請Jack 輸入一個數字: \n", mayerI + 1);//0~mayerI ==> +1
 		printf(" <Jack> : "); fgets(myPickup, sizeof(myPickup), stdin);// prompt for input
 
 		if (myPickup[0] == '@') return 0;// To end connection, put @ as the first character
 		// remove the newline character obtained by fgets()
 		int i = 0;  while (myPickup[i] != '\n') i++; myPickup[i] = '\0';
 
-		int nPickup = atoi(myPickup) - 1;//實際上對應到牌組(0開始計)
+		int MYPickup = atoi(myPickup);
+		//int nPickup = atoi(myPickup) - 1;//實際上對應到牌組(0開始計)
+		/*printf("演算%d\n\n", MYPickup);
+		printf("演算%d\n\n", rand()* MYPickup);*/
+
+		int nPickup;
+		nPickup =( (rand() * MYPickup) % mayerI );
+		//printf("演算%d\n\n", nPickup);
+
 		//抽到mayer的??牌
 		if (mayerCard[nPickup] == 52 || mayerCard[nPickup] == 53)// 鬼牌直接加入手牌
 		{
@@ -255,15 +263,17 @@ int __cdecl main(int argc, char** argv)
 
 		if (jackI == -1) {
 			printf("Jack wins !\n\n");
+			char cong[20] = "Jack wins !";
+			send_str(cong);
 			break;
 		}
 
-		printf("抽牌開始後，Jack 剩下 :\n");
+		printf("\n你(Jack)抽了對方的第%d張牌後，剩下 :\n", nPickup+1);
 		for (int j = 0; j <= jackI; j++)
 		{
 			if (jackCard[j] == 52 || jackCard[j] == 53)//沒有花色的鬼牌
 			{
-				printf("JOKER ");
+				printf("JOKER  ");
 			}
 			else {
 				printf("%s_", color[jackCard[j] % 4]);
@@ -284,7 +294,8 @@ int __cdecl main(int argc, char** argv)
 
 		//要傳回給mayer告訴他剩餘的牌組
 		char plar2CardNewSet[512] = "";
-		sprintf(plar2CardNewSet, "\nJack 選擇了你的第%s張手牌。Jack剩下%d張牌。請問你要抽Jack第幾張牌?:\n Mayer手上剩下:\n", myPickup,jackI+1);//傳給mayer告知jack選擇第幾張。
+		int forPrintMayer = nPickup + 1;
+		sprintf(plar2CardNewSet, "\nJack抽了你的一張牌，所以Jack剩下%d張牌。\n你(Mayer)手上剩下:\n", jackI+1);//傳給mayer告知jack選擇第幾張。
 		for (int j = 0; j <= mayerI; j++)//此時mayer已經少了一張牌。
 		{
 			if (mayerCard[j] == 52 || mayerCard[j] == 53)//沒有花色的鬼牌
@@ -305,12 +316,14 @@ int __cdecl main(int argc, char** argv)
 
 		//mayer傳來，準備抽jack??牌
 		char* youPickup=recv_str();
-		int nMPickup = atoi(youPickup) - 1;//實際上對應到牌組(0開始計)
-		
+		int NMayPickup = atoi(youPickup);//實際上對應到牌組(0開始計)
+		int nMPickup;
+		nMPickup = (((rand() / NMayPickup + 5 * NMayPickup)) + 2 * NMayPickup) % jackI;
 		//要傳回給mayer告訴他剩餘的牌組
 		char plar2CardNewSet2[512] = "";
-		sprintf(plar2CardNewSet2, "你選擇了Jack的第%d張手牌。按下Enter:\n Mayer手上剩下:\n", nMPickup+1);//傳給mayer告知jack選擇第幾張。
-
+		sprintf(plar2CardNewSet2, "你(Mayer)抽完Jack的手牌後，手上剩下:\n", nMPickup+1);//傳給mayer告知jack選擇第幾張。
+		///這邊要注意(0406)
+		
 		////處理mayer手牌------顯示mayer的牌組
 		if (jackCard[nMPickup] == 52 || jackCard[nMPickup] == 53) //鬼牌直接加入手牌
 		{
@@ -332,7 +345,10 @@ int __cdecl main(int argc, char** argv)
 
 		if (mayerI == 0)
 		{
-			printf("Mayer left only 1 card and it's not Joker.\n Mayer wins !\n\n");
+			char cong[60] = "Mayer left only 1 card and it's Jack's turn.\nMayer wins !";
+
+			printf("%s !\n\n", cong);
+			send_str(cong);
 			break;
 		}
 
